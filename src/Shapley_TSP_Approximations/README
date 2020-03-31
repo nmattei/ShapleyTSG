@@ -1,0 +1,117 @@
+Build Instructions:
+-------------------
+
+To compile, first please install the C++ GMP library for the high
+precision numerics.
+
+Before you build, add an install prefix to "shapley_experiment.cc". For example,
+
+#define INSTALLED_PREFIX "/tmp/ram/shapley/"
+
+To build, use the following:
+
+g++ [-m32] -O3 -o shapley_experiment shapley_experiment.cc -IINCLUDE_DIR_TO_BOOST  -lgmpxx
+
+Reading the source: 
+-------------------
+
+Have a look at "main_loop". The code in "generate_model" makes an
+instance. The code in "calculate_all_shapley_values" calculates values
+using the TMST, MST, and TSP values using 1000 iterations of
+ApproShapley. It also adds margin values calculated according to a
+re-implementation of the procedure from Indigo. I do caching, so never
+make the same call to Concorde, etc. more than once.
+
+Running the code:
+-----------------
+
+Only to be run on a ram filesystem.
+
+mkdir -p /tmp/ram
+sudo mount -t tmpfs -o size=512M tmpfs /tmp/ram/
+
+./shapley_experiment 7 7 20 concorde_file_name.concorde 1000 1000 1000 0 12312
+
+Will experiment on size 20 randomly generated games with 7
+players. 
+
+The first integer is the smallest game, and the second integer is the
+largest game. For each specified game size we sample N games, here
+N=20. The third argument is the filename where Concorde input files
+are written to. Next two integers are the number of samples
+touring-MST samplgins, and then for ApproShapley. Then the next
+integer is chart magnitude (i.e. how big the rectangle is on which the
+game is generated.  If unsure leave at 1k. Then second last integer is
+whether the game is asymmetric or not -- at 0 the game is symmetric.
+Finally, there is the seed.
+
+Further Details:
+----------------
+----------------
+
+Experimental output format (raw_samples_N_M.data):
+--------------------------------------------------
+
+Here, N is the size of the smallest game evaluated and M is the size
+of the largest game evaluated. In most recent experiments, N==M.
+
+The experiment script for the moment tests 5 different proxies for the
+Shapley value. The corresponding allocations are written to output
+files using the function:
+
+write_raw_samples
+
+This will give you the proxy that each column is associated with. At
+the time of writing, the column order is as follows:
+
+ 1 - ApproShapley value of the TSG (Travelling Salesperson Game) using Concorde.
+
+ 2 - Is the ApproShapley value of the TSG using the Christofides
+ heuristic for solutions.
+
+ 3 - Is a typical allocation of costs that an accountant in a
+ transport business would employ.
+
+ 4 - Is the allocation according to the moat-packing heuristic.
+
+ 5 - The allocation to $i$ is the margin from the grand tour (with N
+ customers) to the tour with N\i. Tours for N and N\i are computed
+ with Concorde. Again, this is a measure that is used in practice by
+ business managers in transport applications.
+
+ 6 - Allocation to $i$ is the distance from $i$ to the depot. 
+
+
+Experimental output format (apportionment_data_N_M.data):
+---------------------------------------------------------
+
+
+Again, N is the size of the smallest game evaluated and M is the size
+of the largest game evaluated. In most recent experiments, N==M. 
+
+Column order is the same as above, except that column 1 is now
+Christofides. Here we are comparing to the ApproShapley derived
+allocation to the TSG.
+
+First I normalise the cost allocations. Sum the allocation to each
+customer associated with a proxy, and then divide each of the values
+by that total. This yields a normalised score. I compare the
+normalised score of the each proxy with the normalised score of the
+ApproShapley values of the TSG.
+
+Matrix Inputs:
+--------------
+
+The code base is essentially an experiment script, written in C++-1998.
+
+There is functionality for input/problems that are specified with a
+distance matrix. This is from earlier experiments using MST heuristics
+for asymmetric problems. For the problem generation in this case, have
+a look at:
+
+generate_model_matrix
+
+This generates a class of asymmetric problems. These are written to
+Concorde for solution via the following function:
+
+write__for_concorde__asym
